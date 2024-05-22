@@ -1,4 +1,10 @@
 #include "systemcalls.h"
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <fcntl.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -16,8 +22,11 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
-
-    return true;
+    int ret = system(cmd);
+    if (ret==0){
+        return true;
+    }
+    return false;
 }
 
 /**
@@ -57,10 +66,36 @@ bool do_exec(int count, ...)
  *   (first argument to execv), and use the remaining arguments
  *   as second argument to the execv() command.
  *
-*/
+*/  
+
+    char *params[count];
+    for(i=0; i < count; i++){
+        params[i] = command[i+1];
+        printf("params[i]: %s\n", params[i]);
+    }
+
+    pid_t pid = fork();
+    if (pid < 0){
+        perror("fork fail");
+        return false;
+    }
+    
+    if (pid){
+        pid_t cpid = wait(NULL);
+        if (cpid == -1){
+            perror("wait fail");
+            return false;
+        }
+    }
+    else{
+        int ret = execv(command[0],params);
+        if (ret == -1){
+            perror("execv fail");
+            return false;
+        }
+    }
 
     va_end(args);
-
     return true;
 }
 
@@ -92,8 +127,45 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *
 */
+    char *params[count];
+    for(i=0; i < count; i++){
+        params[i] = command[i+1];
+        printf("params[i]: %s\n", params[i]);
+    }
 
+    int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+    if (fd < 0){
+        perror("open redirectcion file fails");
+        return false;
+    }
+
+    if (dup2(fd, 1) < 0 ){
+        perror("dup2 fails");
+        return false;
+    }
+
+    pid_t pid = fork();
+    if (pid < 0){
+        perror("fork fail");
+        return false;
+    }
+    
+    if (pid){
+        pid_t cpid = wait(NULL);
+        if (cpid == -1){
+            perror("wait fail");
+            return false;
+        }
+    }
+    else{
+        int ret = execv(command[0],params);
+        if (ret == -1){
+            perror("execv fail");
+            return false;
+        }
+    }
+    
+    close(fd);
     va_end(args);
-
     return true;
 }
