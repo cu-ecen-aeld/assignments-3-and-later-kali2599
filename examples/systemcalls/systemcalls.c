@@ -133,7 +133,7 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
         printf("params[i]: %s\n", params[i]);
     }
 
-    int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+    int fd = open(outputfile, O_WRONLY|O_CREAT, 0644);
     if (fd < 0){
         perror("open redirectcion file fails");
         return false;
@@ -143,6 +143,7 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
         perror("dup2 fails");
         return false;
     }
+    close(fd);
 
     pid_t pid = fork();
     if (pid < 0){
@@ -165,7 +166,6 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
         }
     }
     
-    close(fd);
     va_end(args);
     return true;
 }
